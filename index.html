@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Daily Logbook</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0f0e0d;--surface:#1a1917;--surface2:#242220;--border:#2e2c29;
+    --accent:#e8c547;--accent2:#e87d47;--danger:#e85a47;--good:#5ae88a;
+    --text:#f0ece4;--text2:#9e9a93;--text3:#5a5750;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;min-height:100vh;}
+
+  #loading-overlay{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:200;gap:16px;}
+  .spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #loading-overlay span{font-family:'DM Mono',monospace;font-size:13px;color:var(--text3);}
+
+  #auth-screen{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;text-align:center;padding:24px;}
+  .auth-logo{font-family:'DM Serif Display',serif;font-size:48px;color:var(--accent);margin-bottom:8px;}
+  .auth-sub{color:var(--text3);font-family:'DM Mono',monospace;font-size:13px;margin-bottom:48px;}
+  .google-btn{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:14px 28px;border-radius:10px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:15px;transition:border-color .2s,background .2s;}
+  .google-btn:hover{border-color:var(--accent);background:var(--surface2);}
+  .google-btn svg{width:20px;height:20px;}
+  .auth-note{margin-top:20px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;max-width:320px;line-height:1.7;}
+
+  #denied-screen{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;text-align:center;padding:24px;}
+  .denied-icon{font-size:64px;margin-bottom:16px;}
+  .denied-title{font-family:'DM Serif Display',serif;font-size:32px;color:var(--danger);margin-bottom:8px;}
+  .denied-sub{color:var(--text3);font-family:'DM Mono',monospace;font-size:12px;margin-bottom:24px;line-height:1.7;}
+  .denied-btn{background:var(--surface);border:1px solid var(--border);color:var(--text2);padding:10px 24px;border-radius:8px;cursor:pointer;font-family:'DM Mono',monospace;font-size:12px;}
+
+  #app{display:none;}
+  nav{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:100;}
+  .nav-logo{font-family:'DM Serif Display',serif;font-size:20px;color:var(--accent);}
+  .nav-logo span{color:var(--text2);font-size:11px;display:block;font-family:'DM Mono',monospace;font-weight:300;}
+  .nav-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .nav-tabs{display:flex;gap:4px;}
+  .tab-btn{background:none;border:1px solid transparent;color:var(--text2);padding:6px 13px;border-radius:6px;cursor:pointer;font-family:'DM Mono',monospace;font-size:11px;transition:all .2s;}
+  .tab-btn:hover{color:var(--text);border-color:var(--border);}
+  .tab-btn.active{background:var(--surface2);color:var(--accent);border-color:var(--accent);}
+  .user-pill{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:4px 12px 4px 6px;}
+  .user-pill img{width:22px;height:22px;border-radius:50%;}
+  .user-pill span{color:var(--text2);font-family:'DM Mono',monospace;font-size:11px;}
+  .signout-btn{background:none;border:1px solid var(--border);color:var(--text3);padding:5px 10px;border-radius:6px;cursor:pointer;font-family:'DM Mono',monospace;font-size:10px;transition:all .2s;}
+  .signout-btn:hover{color:var(--danger);border-color:var(--danger);}
+
+  .container{max-width:1100px;margin:0 auto;padding:24px;}
+  .section{display:none;}.section.active{display:block;}
+  .section-heading{font-family:'DM Serif Display',serif;font-size:28px;margin-bottom:6px;}
+  .section-sub{color:var(--text3);font-size:12px;margin-bottom:24px;font-family:'DM Mono',monospace;}
+
+  .today-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
+  @media(max-width:700px){.today-grid{grid-template-columns:1fr;}}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;}
+  .full-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px;}
+  .card-title{font-family:'DM Serif Display',serif;font-size:16px;color:var(--text2);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
+
+  label{display:block;font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:6px;margin-top:12px;}
+  label:first-child{margin-top:0;}
+  textarea,input[type=text],input[type=number],select{background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px;font-family:'DM Sans',sans-serif;font-size:13px;width:100%;outline:none;resize:vertical;transition:border-color .2s;}
+  textarea:focus,input[type=text]:focus,input[type=number]:focus,select:focus{border-color:var(--accent);}
+  textarea{min-height:72px;}
+  select option{background:var(--surface2);}
+
+  .mood-row{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+  .mood-label{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);width:80px;}
+  input[type=range]{-webkit-appearance:none;flex:1;height:4px;background:var(--border);border-radius:4px;outline:none;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);cursor:pointer;}
+  .mood-val{font-family:'DM Mono',monospace;font-size:13px;color:var(--accent);width:20px;text-align:right;}
+
+  .addiction-banner{background:linear-gradient(135deg,rgba(232,90,71,.1),rgba(232,197,71,.05));border:1px solid rgba(232,90,71,.3);border-radius:12px;padding:16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .ab-title{font-family:'DM Serif Display',serif;font-size:16px;color:var(--danger);}
+  .ab-sub{font-size:11px;color:var(--text3);margin-top:2px;font-family:'DM Mono',monospace;}
+  .clean-days{font-family:'DM Serif Display',serif;font-size:40px;color:var(--good);text-align:center;}
+
+  .urge-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+  .urge-count{font-family:'DM Mono',monospace;font-size:28px;color:var(--danger);font-weight:500;}
+  .urge-count span{font-size:12px;color:var(--text3);display:block;}
+  .urge-btn{background:var(--danger);color:white;border:none;padding:10px 18px;border-radius:8px;cursor:pointer;font-family:'DM Mono',monospace;font-size:12px;font-weight:500;}
+  .urge-log-list{margin-top:10px;max-height:100px;overflow-y:auto;}
+  .urge-log-item{display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-top:1px solid var(--border);font-size:12px;color:var(--text2);}
+  .urge-time{font-family:'DM Mono',monospace;color:var(--text3);font-size:11px;white-space:nowrap;}
+
+  .time-block-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+  .time-block{border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;}
+  .block-label{font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);}
+  .block-val{font-size:20px;font-weight:500;}
+  .block-unit{font-size:10px;color:var(--text3);}
+  .time-block input[type=number]{background:none;border:none;font-size:20px;font-weight:500;width:50px;outline:none;padding:0;text-align:center;}
+  .time-block.work input,.time-block.work .block-val{color:#5ab4e8;}
+  .time-block.ds input,.time-block.ds .block-val{color:var(--good);}
+  .time-block.jobs input,.time-block.jobs .block-val{color:var(--accent2);}
+
+  .input-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  @media(max-width:600px){.input-row{grid-template-columns:1fr;}}
+
+  .save-btn{background:var(--accent);color:#0f0e0d;border:none;padding:12px 28px;border-radius:8px;cursor:pointer;font-family:'DM Mono',monospace;font-size:13px;font-weight:500;margin-top:16px;width:100%;transition:opacity .2s;}
+  .save-btn:hover{opacity:.85;}
+  .save-btn:disabled{opacity:.4;cursor:not-allowed;}
+
+  .week-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
+  .week-nav{display:flex;gap:8px;}
+  .wn-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:6px 12px;border-radius:6px;cursor:pointer;font-family:'DM Mono',monospace;font-size:12px;}
+  .week-legend{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px;}
+  .legend-item{display:flex;align-items:center;gap:6px;font-size:12px;font-family:'DM Mono',monospace;color:var(--text2);}
+  .legend-dot{width:10px;height:10px;border-radius:2px;}
+  .ld-work{background:rgba(90,180,232,.6);}
+  .ld-ds{background:rgba(90,232,138,.5);}
+  .ld-jobs{background:rgba(232,125,71,.5);}
+  .ld-rest{background:rgba(100,90,80,.5);}
+  .ld-personal{background:rgba(180,90,232,.4);}
+  .week-grid{display:grid;grid-template-columns:60px repeat(7,1fr);gap:2px;margin-bottom:20px;overflow-x:auto;}
+  .wg-day-header{text-align:center;font-family:'DM Mono',monospace;font-size:11px;padding:8px 4px;color:var(--text3);border-radius:6px;}
+  .wg-day-header.today{color:var(--accent);}
+  .wg-time-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);text-align:right;padding-right:8px;height:32px;display:flex;align-items:center;justify-content:flex-end;}
+  .wg-cell{height:32px;border-radius:4px;background:var(--surface);border:1px solid transparent;cursor:pointer;transition:all .15s;}
+  .wg-cell:hover{border-color:var(--border);}
+  .wg-cell.WORK{background:rgba(90,180,232,.25);border-color:rgba(90,180,232,.4);}
+  .wg-cell.DS{background:rgba(90,232,138,.2);border-color:rgba(90,232,138,.35);}
+  .wg-cell.JOBS{background:rgba(232,125,71,.2);border-color:rgba(232,125,71,.35);}
+  .wg-cell.REST{background:rgba(100,90,80,.2);border-color:var(--border);}
+  .wg-cell.PERSONAL{background:rgba(180,90,232,.15);border-color:rgba(180,90,232,.3);}
+  .week-selector{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+  .ws-btn{padding:6px 12px;border:1px solid var(--border);background:none;color:var(--text2);border-radius:6px;cursor:pointer;font-size:11px;font-family:'DM Mono',monospace;transition:all .2s;}
+  .ws-btn.WORK.active{color:#5ab4e8;border-color:#5ab4e8;background:rgba(90,180,232,.08);}
+  .ws-btn.DS.active{color:var(--good);border-color:var(--good);background:rgba(90,232,138,.08);}
+  .ws-btn.JOBS.active{color:var(--accent2);border-color:var(--accent2);background:rgba(232,125,71,.08);}
+  .ws-btn.REST.active{color:var(--text2);border-color:var(--text3);}
+  .ws-btn.PERSONAL.active{color:#b45ae8;border-color:#b45ae8;background:rgba(180,90,232,.08);}
+  .goal-bar-wrap{margin-top:8px;}
+  .goal-bar-bg{background:var(--border);border-radius:4px;height:6px;overflow:hidden;margin-top:6px;}
+  .goal-bar-fill{height:100%;border-radius:4px;background:var(--good);transition:width .5s;}
+
+  .insights-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-bottom:24px;}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;}
+  .stat-label{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);margin-bottom:8px;}
+  .stat-value{font-family:'DM Serif Display',serif;font-size:36px;}
+  .stat-value.accent{color:var(--accent);}
+  .stat-value.danger{color:var(--danger);}
+  .stat-value.good{color:var(--good);}
+  .stat-value.warn{color:var(--accent2);}
+  .stat-sub{font-size:11px;color:var(--text3);margin-top:4px;}
+  .chart-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px;}
+  .chart-title{font-family:'DM Serif Display',serif;font-size:16px;color:var(--text2);margin-bottom:16px;}
+  .bar-chart{display:flex;gap:8px;align-items:flex-end;height:120px;}
+  .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end;}
+  .bar{width:100%;border-radius:4px 4px 0 0;min-height:4px;}
+  .bar.mood-bar{background:var(--accent);}
+  .bar.urge-bar{background:var(--danger);}
+  .bar.ds-bar{background:var(--good);}
+  .bar-label{font-family:'DM Mono',monospace;font-size:9px;color:var(--text3);}
+  .streak-row{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;}
+  .streak-dot{width:12px;height:12px;border-radius:50%;background:var(--border);}
+  .streak-dot.clean{background:var(--good);}
+  .streak-dot.relapsed{background:var(--danger);}
+
+  .entries-list{display:flex;flex-direction:column;gap:12px;}
+  .entry-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;display:grid;grid-template-columns:90px 1fr;gap:12px;align-items:start;}
+  .entry-date{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);padding-top:2px;}
+  .entry-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+  .tag{padding:2px 8px;border-radius:4px;font-size:10px;font-family:'DM Mono',monospace;}
+  .tag.mood-tag{background:rgba(232,197,71,.15);color:var(--accent);}
+  .tag.urge-tag{background:rgba(232,90,71,.15);color:var(--danger);}
+  .tag.work-tag{background:rgba(90,180,232,.15);color:#5ab4e8;}
+  .tag.ds-tag{background:rgba(90,232,138,.15);color:var(--good);}
+  .tag.jobs-tag{background:rgba(232,125,71,.15);color:var(--accent2);}
+  .entry-note{font-size:12px;color:var(--text2);margin-top:6px;line-height:1.5;}
+
+  #toast{position:fixed;bottom:24px;right:24px;background:var(--accent);color:#0f0e0d;padding:12px 20px;border-radius:8px;font-family:'DM Mono',monospace;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .3s;z-index:999;}
+  #toast.show{opacity:1;}
+  #toast.err{background:var(--danger);color:white;}
+</style>
+</head>
+<body>
+
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <span>Connecting to cloud…</span>
+</div>
+
+<div id="auth-screen">
+  <div class="auth-logo">Logbook</div>
+  <div class="auth-sub">Personal Growth · Career · Recovery</div>
+  <button class="google-btn" id="signin-btn">
+    <svg viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+    Sign in with Google
+  </button>
+  <div class="auth-note">This is a private personal logbook. Unauthorised access is not permitted.</div>
+</div>
+
+<div id="denied-screen">
+  <div class="denied-icon">🔒</div>
+  <div class="denied-title">Access Denied</div>
+  <div class="denied-sub">This is a private logbook.<br>You are not authorised to access this app.</div>
+  <button class="denied-btn" id="denied-signout-btn">Sign out</button>
+</div>
+
+<div id="app">
+  <nav>
+    <div class="nav-logo">Logbook <span>Personal Growth + Career</span></div>
+    <div class="nav-right">
+      <div class="nav-tabs">
+        <button class="tab-btn active" id="tbtn-today" onclick="showTab('today')">Today</button>
+        <button class="tab-btn" id="tbtn-week" onclick="showTab('week')">Week Plan</button>
+        <button class="tab-btn" id="tbtn-insights" onclick="showTab('insights')">Insights</button>
+        <button class="tab-btn" id="tbtn-history" onclick="showTab('history')">History</button>
+      </div>
+      <div class="user-pill">
+        <img id="user-photo" src="" alt="" style="display:none">
+        <span id="user-name">—</span>
+      </div>
+      <button class="signout-btn" id="signout-btn">Sign out</button>
+    </div>
+  </nav>
+
+  <div class="container">
+
+    <!-- TODAY -->
+    <div class="section active" id="tab-today">
+      <div class="section-heading">Today's Log</div>
+      <div class="section-sub" id="today-date-display"></div>
+      <div class="addiction-banner">
+        <div>
+          <div class="ab-title">Recovery Tracker</div>
+          <div class="ab-sub">Log cravings honestly — no judgment, only growth</div>
+        </div>
+        <div>
+          <div class="clean-days" id="clean-days-count">—</div>
+          <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;text-align:center;display:block">clean days</span>
+        </div>
+      </div>
+      <div class="today-grid">
+        <div class="card">
+          <div class="card-title"><span class="dot" style="background:var(--accent)"></span> Mood & Energy</div>
+          <div class="mood-row"><span class="mood-label">Mood</span><input type="range" min="1" max="10" value="5" id="sl-mood" oninput="setVal('v-mood',this.value)"><span class="mood-val" id="v-mood">5</span></div>
+          <div class="mood-row"><span class="mood-label">Energy</span><input type="range" min="1" max="10" value="5" id="sl-energy" oninput="setVal('v-energy',this.value)"><span class="mood-val" id="v-energy">5</span></div>
+          <div class="mood-row"><span class="mood-label">Focus</span><input type="range" min="1" max="10" value="5" id="sl-focus" oninput="setVal('v-focus',this.value)"><span class="mood-val" id="v-focus">5</span></div>
+          <div class="mood-row"><span class="mood-label">Anxiety</span><input type="range" min="1" max="10" value="3" id="sl-anxiety" oninput="setVal('v-anxiety',this.value)"><span class="mood-val" id="v-anxiety">3</span></div>
+          <label>What triggered your mood today?</label>
+          <textarea id="mood-trigger" placeholder="e.g. rejection email, tired after shift, good news..."></textarea>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="dot" style="background:var(--danger)"></span> Craving Log</div>
+          <div class="urge-header">
+            <div class="urge-count" id="urge-count">0 <span>urges today</span></div>
+            <button class="urge-btn" id="log-urge-btn">+ Log Urge</button>
+          </div>
+          <label>Trigger</label>
+          <input type="text" id="urge-trigger" placeholder="e.g. boredom, stress, scrolling...">
+          <label>Intensity (1–10)</label>
+          <div class="mood-row" style="margin-top:6px">
+            <input type="range" min="1" max="10" value="5" id="sl-urge-i" oninput="setVal('v-urge-i',this.value)" style="flex:1">
+            <span class="mood-val" id="v-urge-i">5</span>
+          </div>
+          <label>Did you resist?</label>
+          <select id="urge-resisted">
+            <option value="yes">✅ Yes, I resisted</option>
+            <option value="no">❌ No, I gave in</option>
+            <option value="partial">⚡ Partially</option>
+          </select>
+          <div class="urge-log-list" id="urge-list"></div>
+        </div>
+      </div>
+      <div class="full-card">
+        <div class="card-title" style="margin-bottom:16px"><span class="dot" style="background:#5ab4e8"></span> Time Spent Today (hours)</div>
+        <div class="time-block-grid">
+          <div class="time-block work"><div class="block-label">WOOLWORTHS</div><div class="block-val"><input type="number" id="t-work" value="0" min="0" max="24"></div><div class="block-unit">hrs</div></div>
+          <div class="time-block ds"><div class="block-label">DATA SCIENCE</div><div class="block-val"><input type="number" id="t-ds" value="0" min="0" max="24"></div><div class="block-unit">hrs</div></div>
+          <div class="time-block jobs"><div class="block-label">JOB APPS</div><div class="block-val"><input type="number" id="t-jobs" value="0" min="0" max="24"></div><div class="block-unit">hrs</div></div>
+        </div>
+      </div>
+      <div class="full-card">
+        <div class="card-title" style="margin-bottom:16px"><span class="dot" style="background:var(--good)"></span> Goals & Reflection</div>
+        <div class="input-row">
+          <div>
+            <label>✅ What did I accomplish?</label>
+            <textarea id="today-wins" placeholder="Projects done, skills learned, jobs applied..."></textarea>
+          </div>
+          <div>
+            <label>🎯 Goal for tomorrow</label>
+            <textarea id="tomorrow-goal" placeholder="One specific achievable target"></textarea>
+          </div>
+        </div>
+        <label>📝 Journal / Free Notes</label>
+        <textarea id="today-notes" style="min-height:90px" placeholder="Thoughts, feelings, gratitude, frustrations..."></textarea>
+        <label>Affirmation for today</label>
+        <input type="text" id="today-affirmation" placeholder="e.g. I am making progress every day. The job is coming.">
+      </div>
+      <button class="save-btn" id="save-btn">☁️ Save Today's Log to Cloud</button>
+    </div>
+
+    <!-- WEEK -->
+    <div class="section" id="tab-week">
+      <div class="week-header">
+        <div>
+          <div class="section-heading">Weekly Planner</div>
+          <div class="section-sub" id="week-range"></div>
+        </div>
+        <div class="week-nav">
+          <button class="wn-btn" id="wk-prev">← Prev</button>
+          <button class="wn-btn" id="wk-now">This Week</button>
+          <button class="wn-btn" id="wk-next">Next →</button>
+        </div>
+      </div>
+      <div class="week-legend">
+        <div class="legend-item"><div class="legend-dot ld-work"></div> Woolworths</div>
+        <div class="legend-item"><div class="legend-dot ld-ds"></div> Data Science</div>
+        <div class="legend-item"><div class="legend-dot ld-jobs"></div> Job Apps</div>
+        <div class="legend-item"><div class="legend-dot ld-rest"></div> Rest</div>
+        <div class="legend-item"><div class="legend-dot ld-personal"></div> Self-care</div>
+      </div>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:12px;font-family:'DM Mono',monospace">Select a category then click cells to assign time blocks (1 cell = 1 hour).</p>
+      <div class="week-selector">
+        <button class="ws-btn WORK active" id="sel-WORK" onclick="selBlock('WORK')">Woolworths</button>
+        <button class="ws-btn DS" id="sel-DS" onclick="selBlock('DS')">Data Science</button>
+        <button class="ws-btn JOBS" id="sel-JOBS" onclick="selBlock('JOBS')">Job Apps</button>
+        <button class="ws-btn REST" id="sel-REST" onclick="selBlock('REST')">Rest</button>
+        <button class="ws-btn PERSONAL" id="sel-PERSONAL" onclick="selBlock('PERSONAL')">Self-care</button>
+        <button class="ws-btn" onclick="selBlock('')" style="color:var(--danger)">Clear</button>
+      </div>
+      <div class="week-grid" id="week-grid"></div>
+      <div class="full-card">
+        <div class="card-title" style="margin-bottom:14px">📊 Weekly Targets</div>
+        <div class="goal-bar-wrap">
+          <div style="display:flex;justify-content:space-between"><span style="font-size:12px;color:#5ab4e8;font-family:'DM Mono',monospace">Woolworths (32h target)</span><span style="font-family:'DM Mono',monospace;font-size:12px;color:#5ab4e8" id="work-h">0h</span></div>
+          <div class="goal-bar-bg"><div class="goal-bar-fill" style="background:#5ab4e8;width:0%" id="bar-work"></div></div>
+        </div>
+        <div class="goal-bar-wrap" style="margin-top:12px">
+          <div style="display:flex;justify-content:space-between"><span style="font-size:12px;color:var(--good);font-family:'DM Mono',monospace">Data Science (14h target)</span><span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--good)" id="ds-h">0h</span></div>
+          <div class="goal-bar-bg"><div class="goal-bar-fill" style="width:0%" id="bar-ds"></div></div>
+        </div>
+        <div class="goal-bar-wrap" style="margin-top:12px">
+          <div style="display:flex;justify-content:space-between"><span style="font-size:12px;color:var(--accent2);font-family:'DM Mono',monospace">Job Applications (8h target)</span><span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--accent2)" id="jobs-h">0h</span></div>
+          <div class="goal-bar-bg"><div class="goal-bar-fill" style="background:var(--accent2);width:0%" id="bar-jobs"></div></div>
+        </div>
+      </div>
+      <button class="save-btn" id="save-week-btn">☁️ Save Week to Cloud</button>
+    </div>
+
+    <!-- INSIGHTS -->
+    <div class="section" id="tab-insights">
+      <div class="section-heading">Insights</div>
+      <div class="section-sub">Patterns from your cloud logs</div>
+      <div class="insights-grid" id="stats-grid"></div>
+      <div class="chart-card"><div class="chart-title">Mood — last 7 days</div><div class="bar-chart" id="ch-mood"></div></div>
+      <div class="chart-card"><div class="chart-title">Cravings — last 7 days</div><div class="bar-chart" id="ch-urges"></div></div>
+      <div class="chart-card"><div class="chart-title">Data Science hours — last 7 days</div><div class="bar-chart" id="ch-ds"></div></div>
+      <div class="full-card">
+        <div class="card-title" style="margin-bottom:12px">🧠 Recovery Streak (last 14 days)</div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:8px;font-family:'DM Mono',monospace">Green = clean day · Red = relapsed</div>
+        <div class="streak-row" id="streak"></div>
+      </div>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="section" id="tab-history">
+      <div class="section-heading">History</div>
+      <div class="section-sub">All logged days — synced from Firestore</div>
+      <div class="entries-list" id="history-list"><div style="color:var(--text3);font-family:'DM Mono',monospace;font-size:13px;text-align:center;padding:40px">Loading from cloud…</div></div>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut as fbSignOut }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, collection, getDocs, query, orderBy, limit }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// ---- CONFIG (injected by GitHub Actions — never edit keys here) ----
+const firebaseConfig = {
+  apiKey:            "__FIREBASE_API_KEY__",
+  authDomain:        "__FIREBASE_AUTH_DOMAIN__",
+  projectId:         "__FIREBASE_PROJECT_ID__",
+  storageBucket:     "__FIREBASE_STORAGE_BUCKET__",
+  messagingSenderId: "__FIREBASE_MESSAGING_SENDER_ID__",
+  appId:             "__FIREBASE_APP_ID__"
+};
+const ALLOWED_UID = "__ALLOWED_UID__";
+
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+const provider = new GoogleAuthProvider();
+
+let uid = null;
+let entries = [];
+let weekCache = {};
+let weekOffset = 0;
+let selBlockType = 'WORK';
+let curWeekKey = '';
+let todayUrges = [];
+
+// ---- TOAST ----
+function toast(msg, err=false){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className=err?'err show':'show';
+  setTimeout(()=>t.className='',2500);
+}
+
+// ---- AUTH ----
+document.getElementById('signin-btn').onclick = () =>
+  signInWithPopup(auth, provider).catch(e => toast('Sign-in failed: '+e.message, true));
+
+document.getElementById('signout-btn').onclick = () => fbSignOut(auth);
+document.getElementById('denied-signout-btn').onclick = () => fbSignOut(auth);
+
+onAuthStateChanged(auth, async user => {
+  document.getElementById('loading-overlay').style.display = 'none';
+
+  if (user) {
+    // ---- SINGLE USER LOCK ----
+    if (user.uid !== ALLOWED_UID) {
+      await fbSignOut(auth);
+      document.getElementById('auth-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'none';
+      document.getElementById('denied-screen').style.display = 'flex';
+      return;
+    }
+
+    uid = user.uid;
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('denied-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('user-name').textContent = user.displayName?.split(' ')[0] || 'You';
+    const img = document.getElementById('user-photo');
+    if (user.photoURL) { img.src = user.photoURL; img.style.display = 'block'; }
+    await loadEntries();
+    initToday();
+    buildWeekGrid();
+
+  } else {
+    uid = null;
+    document.getElementById('denied-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('auth-screen').style.display = 'flex';
+  }
+});
+
+// ---- LOAD ENTRIES ----
+async function loadEntries(){
+  try {
+    const q = query(collection(db,'users',uid,'entries'), orderBy('date','desc'), limit(90));
+    const snap = await getDocs(q);
+    entries = snap.docs.map(d => d.data());
+    calcCleanDays();
+  } catch(e) { toast('Load error: '+e.message, true); }
+}
+
+// ---- TODAY ----
+function initToday(){
+  document.getElementById('today-date-display').textContent =
+    new Date().toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  todayUrges = [];
+  const key = todayKey();
+  const ex = entries.find(e => e.date === key);
+  if (ex) {
+    ['mood','energy','focus','anxiety'].forEach(k => {
+      const el = document.getElementById('sl-'+k);
+      const def = k==='anxiety'?3:5;
+      if(el){ el.value = ex[k]||def; setVal('v-'+k, ex[k]||def); }
+    });
+    document.getElementById('mood-trigger').value   = ex.moodTrigger||'';
+    document.getElementById('t-work').value         = ex.timeWork||0;
+    document.getElementById('t-ds').value           = ex.timeDS||0;
+    document.getElementById('t-jobs').value         = ex.timeJobs||0;
+    document.getElementById('today-wins').value     = ex.wins||'';
+    document.getElementById('tomorrow-goal').value  = ex.tomorrowGoal||'';
+    document.getElementById('today-notes').value    = ex.notes||'';
+    document.getElementById('today-affirmation').value = ex.affirmation||'';
+    todayUrges = ex.urges||[];
+  }
+  renderUrgeList();
+}
+
+document.getElementById('save-btn').onclick = async () => {
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  const key = todayKey();
+  const entry = {
+    date: key,
+    mood:    +document.getElementById('sl-mood').value,
+    energy:  +document.getElementById('sl-energy').value,
+    focus:   +document.getElementById('sl-focus').value,
+    anxiety: +document.getElementById('sl-anxiety').value,
+    moodTrigger: document.getElementById('mood-trigger').value,
+    urges: [...todayUrges],
+    timeWork: +document.getElementById('t-work').value,
+    timeDS:   +document.getElementById('t-ds').value,
+    timeJobs: +document.getElementById('t-jobs').value,
+    wins:          document.getElementById('today-wins').value,
+    tomorrowGoal:  document.getElementById('tomorrow-goal').value,
+    notes:         document.getElementById('today-notes').value,
+    affirmation:   document.getElementById('today-affirmation').value,
+    savedAt: new Date().toISOString()
+  };
+  try {
+    await setDoc(doc(db,'users',uid,'entries',key), entry);
+    const i = entries.findIndex(e => e.date===key);
+    if(i>=0) entries[i]=entry; else entries.unshift(entry);
+    entries.sort((a,b) => b.date.localeCompare(a.date));
+    calcCleanDays();
+    toast('☁️ Saved to Firestore ✓');
+  } catch(e) { toast('Save failed: '+e.message, true); }
+  btn.disabled = false;
+  btn.textContent = '☁️ Save Today\'s Log to Cloud';
+};
+
+// ---- URGES ----
+document.getElementById('log-urge-btn').onclick = () => {
+  const trigger   = document.getElementById('urge-trigger').value || 'unspecified';
+  const intensity = document.getElementById('sl-urge-i').value;
+  const resisted  = document.getElementById('urge-resisted').value;
+  const time = new Date().toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'});
+  todayUrges.push({time,trigger,intensity,resisted});
+  document.getElementById('urge-count').innerHTML = `${todayUrges.length} <span>urges today</span>`;
+  document.getElementById('urge-trigger').value = '';
+  renderUrgeList();
+  toast('Urge logged');
+};
+function renderUrgeList(){
+  document.getElementById('urge-list').innerHTML = todayUrges.slice().reverse().map(u =>
+    `<div class="urge-log-item"><span class="urge-time">${u.time}</span><span>${u.trigger} · <b>${u.intensity}/10</b> · ${u.resisted==='yes'?'✅':u.resisted==='no'?'❌':'⚡'}</span></div>`
+  ).join('');
+}
+function calcCleanDays(){
+  let n=0;
+  for(const e of [...entries].sort((a,b)=>b.date.localeCompare(a.date))){
+    if(e.urges?.some(u=>u.resisted==='no')) break;
+    n++;
+  }
+  document.getElementById('clean-days-count').textContent = n;
+}
+
+// ---- WEEK GRID ----
+const DAYS  = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const TIMES = [];
+for(let h=6;h<=22;h++) TIMES.push(`${String(h).padStart(2,'0')}:00`);
+
+function weekStart(off){
+  const d=new Date(), day=d.getDay();
+  d.setDate(d.getDate()-day+(day===0?-6:1)+off*7);
+  d.setHours(0,0,0,0); return d;
+}
+function weekKey(ws){
+  const y=ws.getFullYear(), jan1=new Date(y,0,1);
+  const wn=Math.ceil(((ws-jan1)/86400000+1)/7);
+  return `${y}-W${String(wn).padStart(2,'0')}`;
+}
+async function loadWeekData(k){
+  if(weekCache[k]!==undefined) return;
+  try{
+    const snap = await getDoc(doc(db,'users',uid,'weeks',k));
+    weekCache[k] = snap.exists()?(snap.data().cells||{}):{};
+  } catch(e){ weekCache[k]={}; }
+}
+async function buildWeekGrid(){
+  const ws = weekStart(weekOffset);
+  const we = new Date(ws); we.setDate(we.getDate()+6);
+  const fmt = d => d.toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'});
+  document.getElementById('week-range').textContent = `${fmt(ws)} – ${fmt(we)}`;
+  curWeekKey = weekKey(ws);
+  await loadWeekData(curWeekKey);
+  if(!weekCache[curWeekKey]) weekCache[curWeekKey]={};
+  const grid = document.getElementById('week-grid');
+  grid.innerHTML='';
+  grid.appendChild(document.createElement('div'));
+  DAYS.forEach((d,i)=>{
+    const h=document.createElement('div');
+    h.className='wg-day-header';
+    const dd=new Date(ws); dd.setDate(ws.getDate()+i);
+    if(dd.toDateString()===new Date().toDateString()) h.classList.add('today');
+    h.innerHTML=`${d}<br><span style="font-size:10px">${dd.getDate()}</span>`;
+    grid.appendChild(h);
+  });
+  TIMES.forEach(t=>{
+    const tl=document.createElement('div');
+    tl.className='wg-time-label'; tl.textContent=t;
+    grid.appendChild(tl);
+    DAYS.forEach((_,di)=>{
+      const cell=document.createElement('div');
+      const k=`${di}-${t}`;
+      cell.className='wg-cell '+(weekCache[curWeekKey][k]||'');
+      cell.onclick=()=>{
+        weekCache[curWeekKey][k]=selBlockType;
+        cell.className='wg-cell '+selBlockType;
+        updateBars();
+      };
+      grid.appendChild(cell);
+    });
+  });
+  updateBars();
+}
+function updateBars(){
+  const data=weekCache[curWeekKey]||{};
+  let w=0,d=0,j=0;
+  Object.values(data).forEach(v=>{if(v==='WORK')w++;if(v==='DS')d++;if(v==='JOBS')j++;});
+  document.getElementById('work-h').textContent=w+'h';
+  document.getElementById('ds-h').textContent=d+'h';
+  document.getElementById('jobs-h').textContent=j+'h';
+  document.getElementById('bar-work').style.width=Math.min(100,w/32*100)+'%';
+  document.getElementById('bar-ds').style.width=Math.min(100,d/14*100)+'%';
+  document.getElementById('bar-jobs').style.width=Math.min(100,j/8*100)+'%';
+}
+window.selBlock = t => {
+  selBlockType=t;
+  document.querySelectorAll('.ws-btn').forEach(b=>b.classList.remove('active'));
+  if(t) document.getElementById('sel-'+t)?.classList.add('active');
+};
+document.getElementById('wk-prev').onclick = ()=>{ weekOffset--; buildWeekGrid(); };
+document.getElementById('wk-now').onclick  = ()=>{ weekOffset=0;  buildWeekGrid(); };
+document.getElementById('wk-next').onclick = ()=>{ weekOffset++;  buildWeekGrid(); };
+document.getElementById('save-week-btn').onclick = async () => {
+  try{
+    await setDoc(doc(db,'users',uid,'weeks',curWeekKey),{cells:weekCache[curWeekKey]||{}});
+    toast('☁️ Week saved ✓');
+  } catch(e){ toast('Save failed: '+e.message,true); }
+};
+
+// ---- INSIGHTS ----
+function renderInsights(){
+  const n=entries.length;
+  const avgMood=n?(entries.reduce((s,e)=>s+(e.mood||0),0)/n).toFixed(1):'—';
+  const dsTotal=entries.reduce((s,e)=>s+(e.timeDS||0),0);
+  const jobsTotal=entries.reduce((s,e)=>s+(e.timeJobs||0),0);
+  const urgesTotal=entries.reduce((s,e)=>s+(e.urges?.length||0),0);
+  const relapses=entries.reduce((s,e)=>s+(e.urges?.filter(u=>u.resisted==='no').length||0),0);
+  document.getElementById('stats-grid').innerHTML=`
+    <div class="stat-card"><div class="stat-label">AVG MOOD</div><div class="stat-value accent">${avgMood}</div><div class="stat-sub">out of 10</div></div>
+    <div class="stat-card"><div class="stat-label">DAYS LOGGED</div><div class="stat-value good">${n}</div><div class="stat-sub">in the cloud</div></div>
+    <div class="stat-card"><div class="stat-label">DS STUDY HOURS</div><div class="stat-value good">${dsTotal}</div><div class="stat-sub">total hours</div></div>
+    <div class="stat-card"><div class="stat-label">JOB APP HOURS</div><div class="stat-value warn">${jobsTotal}</div><div class="stat-sub">time invested</div></div>
+    <div class="stat-card"><div class="stat-label">TOTAL URGES</div><div class="stat-value danger">${urgesTotal}</div><div class="stat-sub">${relapses} relapses</div></div>
+    <div class="stat-card"><div class="stat-label">RESISTANCE RATE</div><div class="stat-value good">${urgesTotal>0?Math.round((1-relapses/urgesTotal)*100):100}%</div><div class="stat-sub">urges resisted</div></div>
+  `;
+  const last7=entries.slice(0,7).reverse();
+  const labels=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  function bc(id,vals,cls,mx){
+    document.getElementById(id).innerHTML=vals.map((v,i)=>
+      `<div class="bar-col"><div class="bar ${cls}" style="height:${mx?Math.round(v/mx*100):0}%"></div><span class="bar-label">${labels[i%7]}</span></div>`
+    ).join('');
+  }
+  bc('ch-mood',  last7.map(e=>e.mood||0),          'mood-bar', 10);
+  bc('ch-urges', last7.map(e=>e.urges?.length||0),  'urge-bar', Math.max(...last7.map(e=>e.urges?.length||0),1));
+  bc('ch-ds',    last7.map(e=>e.timeDS||0),          'ds-bar',   Math.max(...last7.map(e=>e.timeDS||0),1));
+  document.getElementById('streak').innerHTML=entries.slice(0,14).reverse().map(e=>{
+    const clean=!e.urges?.some(u=>u.resisted==='no');
+    return `<div class="streak-dot ${clean?'clean':'relapsed'}" title="${e.date}: ${clean?'Clean':'Relapsed'}"></div>`;
+  }).join('');
+}
+
+// ---- HISTORY ----
+function renderHistory(){
+  const el=document.getElementById('history-list');
+  if(!entries.length){
+    el.innerHTML='<div style="color:var(--text3);font-family:\'DM Mono\',monospace;font-size:13px;text-align:center;padding:40px">No entries yet. Start logging today!</div>';
+    return;
+  }
+  el.innerHTML=entries.map(e=>{
+    const d=new Date(e.date+'T12:00:00');
+    const uc=e.urges?.length||0, res=e.urges?.filter(u=>u.resisted!=='no').length||0;
+    return `<div class="entry-card">
+      <div class="entry-date">${d.toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short',year:'2-digit'})}</div>
+      <div>
+        <div class="entry-tags">
+          <span class="tag mood-tag">mood ${e.mood}/10</span>
+          <span class="tag mood-tag">energy ${e.energy}/10</span>
+          ${uc>0?`<span class="tag urge-tag">${uc} urges (${res} resisted)</span>`:'<span class="tag" style="background:rgba(90,232,138,.1);color:var(--good)">clean day ✓</span>'}
+          ${e.timeDS>0?`<span class="tag ds-tag">DS ${e.timeDS}h</span>`:''}
+          ${e.timeJobs>0?`<span class="tag jobs-tag">jobs ${e.timeJobs}h</span>`:''}
+          ${e.timeWork>0?`<span class="tag work-tag">work ${e.timeWork}h</span>`:''}
+        </div>
+        ${e.wins?`<div class="entry-note">✅ ${e.wins}</div>`:''}
+        ${e.moodTrigger?`<div class="entry-note" style="color:var(--text3)">Trigger: ${e.moodTrigger}</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ---- TABS ----
+window.showTab = tab => {
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  document.getElementById('tbtn-'+tab).classList.add('active');
+  if(tab==='insights') renderInsights();
+  if(tab==='history')  renderHistory();
+  if(tab==='week')     buildWeekGrid();
+};
+
+// ---- UTILS ----
+window.setVal = (id, val) => { document.getElementById(id).textContent = val; };
+function todayKey(){
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+</script>
+</body>
+</html>
