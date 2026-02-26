@@ -371,7 +371,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut as fbSignOut }
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut as fbSignOut }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, collection, getDocs, query, orderBy, limit }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -400,13 +400,6 @@ let selBlockType = 'WORK';
 let curWeekKey = '';
 let todayUrges = [];
 
-// ---- HANDLE REDIRECT RESULT ON PAGE LOAD ----
-getRedirectResult(auth).catch(e => {
-  if (e.code !== "auth/cancelled-popup-request") {
-    console.error("Redirect error:", e.message);
-  }
-});
-
 // ---- TOAST ----
 function toast(msg, err=false){
   const t=document.getElementById('toast');
@@ -415,8 +408,8 @@ function toast(msg, err=false){
 }
 
 // ---- AUTH ----
-document.getElementById('signin-btn').onclick = () => { document.getElementById('signin-btn').textContent = 'Redirecting…'; document.getElementById('signin-btn').disabled = true; 
-  signInWithRedirect(auth, provider).catch(e => toast('Sign-in failed: '+e.message, true)); }
+document.getElementById('signin-btn').onclick = () =>
+  signInWithPopup(auth, provider).catch(e => toast('Sign-in failed: '+e.message, true));
 
 document.getElementById('signout-btn').onclick = () => fbSignOut(auth);
 document.getElementById('denied-signout-btn').onclick = () => fbSignOut(auth);
